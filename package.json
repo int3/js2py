@@ -1,0 +1,9 @@
+{
+  "name": "py2js",
+  "version": "1.0.0",
+  "dependencies": {
+    "esprima": "*",
+    "estraverse": "*",
+    "pattern-match": "*"
+  }
+}
