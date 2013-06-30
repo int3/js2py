@@ -128,6 +128,7 @@ transform = (c) ->
 
   catchClauses = [] # TODO make this more precise
 
+  # passes that need to know the current function go here
   estraverse.replace c,
     enter: (c, parent) ->
       switch c.type
@@ -138,6 +139,32 @@ transform = (c) ->
         when 'ThisExpression'
           if currentFunction.hoistedName
             return currentFunction.hoistedName
+
+    leave: (c, parent) ->
+      switch c.type
+        when 'Program'
+          visibleFunctions.pop()
+          currentFunction = visibleFunctions[visibleFunctions.length - 1]
+          return
+        when 'FunctionDeclaration'
+          visibleFunctions.pop()
+          currentFunction = visibleFunctions[visibleFunctions.length - 1]
+          return
+        when 'UpdateExpression'
+          if c.argument.type is 'Identifier' and c.argument.name not of currentFunction.vars
+            currentFunction.globalVars[c.argument.name] = 'number'
+          return
+        when 'AssignmentExpression'
+          if c.left.type is 'Identifier'
+            if c.left.name not of currentFunction.vars
+              currentFunction.globalVars[c.left.name] = tryGetType c.right
+            else
+              currentFunction.vars[c.left.name] = tryGetType c.right
+            return
+
+  estraverse.replace c,
+    enter: (c, parent) ->
+      switch c.type
         when 'Identifier'
           if RESERVED_IDENTS.indexOf(c.name) >= 0 and not c.generated
             c.name += '__py__'
@@ -282,27 +309,6 @@ transform = (c) ->
 
     leave: (c, parent) ->
       switch c.type
-        when 'Program'
-          visibleFunctions.pop()
-          currentFunction = visibleFunctions[visibleFunctions.length - 1]
-          return
-        when 'FunctionDeclaration'
-          visibleFunctions.pop()
-          currentFunction = visibleFunctions[visibleFunctions.length - 1]
-          return
-        when 'UpdateExpression'
-          if c.argument.type is 'Identifier' and c.argument.name not of currentFunction.vars
-            currentFunction.globalVars[c.argument.name] = 'number'
-          return
-        when 'AssignmentExpression'
-          if c.left.type is 'Identifier'
-            if c.left.name not of currentFunction.vars
-              currentFunction.globalVars[c.left.name] = tryGetType c.right
-            else
-              currentFunction.vars[c.left.name] = tryGetType c.right
-            return
-          if c.left.type is 'MemberExpression' and c.left.property.name is 'prototype'
-            return null
         when 'ForStatement'
           body = ensure_block c.body
           body.body.unshift {
