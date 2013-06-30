@@ -1,6 +1,6 @@
 # -*- coding: latin-1 -*-
 from __future__ import print_function
-import re
+import re, json
 def typeof(t):
     if t is None: return 'undefined'
     elif isinstance(t, bool): return 'boolean'
@@ -52,3 +52,4 @@ class RegExp(object):
         return self.pattern.search(s) is not None
 
 console = jsdict({"log":print})
+JSON = jsdict({"stringify": lambda a,b=None,c=None:json.dumps(a, default=b, indent=c)})
