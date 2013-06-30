@@ -126,6 +126,8 @@ transform = (c) ->
             body.unshift c
             return c.id
 
+  catchClauses = [] # TODO make this more precise
+
   estraverse.replace c,
     enter: (c, parent) ->
       switch c.type
@@ -274,6 +276,9 @@ transform = (c) ->
               property: { type: 'Identifier', name: 'lower' }
             }), @)
             when_(match.any, (->), @))
+        when 'CatchClause'
+          catchClauses.push(c)
+          return
 
     leave: (c, parent) ->
       switch c.type
@@ -397,6 +402,14 @@ transform = (c) ->
               callee: { type: 'Identifier', name: 'isinstance' }
               arguments: [c.left, right]
             }
+        when 'ThrowStatement'
+          if (lastCatch = catchClauses[catchClauses.length - 1]) and
+             JSON.stringify(lastCatch.param) == JSON.stringify(c.argument)
+            c.argument = null
+          return
+        when 'CatchClause'
+          catchClauses.pop()
+          return
   c
 
 ensure_block = (c) ->
@@ -482,7 +495,7 @@ generate = (c) ->
       when 'CallExpression', 'NewExpression'
         "#{walk c.callee}(#{c.arguments.map(walk).join ', '})"
       when 'ThrowStatement'
-        p.addLine "raise #{walk c.argument}"
+        p.addLine "raise #{(walk c.argument) ? ''}"
       when 'TryStatement'
         p.addLine "try:"
         walk c.block
