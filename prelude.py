@@ -6,6 +6,7 @@ def typeof(t):
     elif isinstance(t, bool): return 'boolean'
     elif isinstance(t, str): return 'string'
     elif isinstance(t, int) or isinstance(t, float): return 'number'
+    elif hasattr(t, '__call__'): return 'function'
     else: return 'object'
 
 def list_indexOf(l, v):
@@ -21,10 +22,10 @@ class jsdict(object):
     def __init__(self, d):
         self.__dict__.update(d)
     def __getitem__(self, name):
-        try:
-            return getattr(self, name)
-        except:
-            return None
+        if name in self.__dict__:
+          return self.__dict__[name]
+        else:
+          return None
     def __setitem__(self, name, value):
         self.__dict__[name] = value
         return value
@@ -35,6 +36,7 @@ class jsdict(object):
             return None
     def __setattr__(self, name, value):
         self[name] = value
+        return value
     def __contains__(self, name):
         return name in self.__dict__
     def __repr__(self):

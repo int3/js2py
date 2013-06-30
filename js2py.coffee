@@ -507,7 +507,7 @@ generate = (c) ->
         p.addLine "except Exception as #{walk c.param}:"
         walk c.body
       when 'PySlice'
-        "#{walk c.callee}[(#{walk c.arguments[0]}):(#{walk c.arguments[1]})]"
+        "#{walk c.callee}[#{maybeParens c.arguments[0]}:#{maybeParens c.arguments[1]}]"
       when 'ConditionalExpression'
         "(#{walk c.consequent} if #{walk c.test} else #{walk c.alternate})"
       when 'MemberExpression'
