@@ -411,6 +411,13 @@ generate = (c) ->
   p = new LinePrinter
   isElse = false
 
+  maybeParens = (expr) ->
+    s = walk expr
+    if expr.type not in ['BinaryExpression', 'UnaryExpression', 'LogicalExpression']
+      s
+    else
+      "(#{s})"
+
   walk = (c) ->
     return if c is null
     switch c.type
@@ -430,10 +437,11 @@ generate = (c) ->
         p.indent--
       when 'FunctionDeclaration'
         p.addLine "def #{c.id.name}(#{c.params.map((p) -> (walk p) + '=None').join ', '}):"
-        p.indent++
-        for k, v of c.globalVars
-          p.addLine "global #{k}"
-        p.indent--
+        globals = Object.keys c.globalVars
+        if globals.length > 0
+          p.indent++
+          p.addLine "global #{globals.join ", "}"
+          p.indent--
         walk c.body
         p.addLine ''
       when 'IfStatement'
@@ -450,7 +458,7 @@ generate = (c) ->
       when 'WhileStatement'
         if c.prelude
           c.prelude.map(walk)
-        p.addLine "while (#{walk c.test}):"
+        p.addLine "while #{walk c.test}:"
         walk c.body
       when 'VariableDeclaration'
         for d in c.declarations
@@ -468,7 +476,9 @@ generate = (c) ->
         p.addLine "return #{if c.argument isnt null then walk c.argument else ''}"
       when 'ExpressionStatement'
         ex = walk c.expression
-        if ex then p.addLine "#{ex}"
+        if c.expression and \
+           c.expression.type not in ['Literal', 'Identifier', 'AssignmentExpression']
+          p.addLine "#{ex}"
       when 'CallExpression', 'NewExpression'
         "#{walk c.callee}(#{c.arguments.map(walk).join ', '})"
       when 'ThrowStatement'
@@ -486,7 +496,7 @@ generate = (c) ->
       when 'PySlice'
         "#{walk c.callee}[(#{walk c.arguments[0]}):(#{walk c.arguments[1]})]"
       when 'ConditionalExpression'
-        "#{walk c.consequent} if #{walk c.test} else #{walk c.alternate}"
+        "(#{walk c.consequent} if #{walk c.test} else #{walk c.alternate})"
       when 'MemberExpression'
         if c.computed
           "#{walk c.object}[#{walk c.property}]"
@@ -508,14 +518,14 @@ generate = (c) ->
           when '!==' then '!='
           when '==', '!=' then throw new Error('Unsupported')
           else c.operator
-        "(#{walk c.left}) #{op} (#{walk c.right})"
+        "#{maybeParens c.left} #{op} #{maybeParens c.right}"
       when 'UnaryExpression'
         if c.operator is '!'
-          "not (#{walk c.argument})"
+          "not #{maybeParens c.argument}"
         else if c.operator is 'delete'
-          "del (#{walk c.argument})"
+          "del #{maybeParens c.argument}"
         else if c.operator is '-'
-          "-(#{walk c.argument})"
+          "-#{maybeParens c.argument}"
         else if c.operator is 'typeof'
           v = walk c.argument
           if c.argument.type is 'Identifier'
@@ -536,9 +546,9 @@ generate = (c) ->
       when 'ArrayExpression'
         "[#{c.elements.map(walk).join ', '}]"
       when 'ObjectExpression'
-        rv = 'jsdict({'
+        rv = 'jsdict({\n'
         for prop in c.properties
-          rv += "\"#{prop.key.name ? prop.key.value}\": (#{walk prop.value}), "
+          rv += "\"#{prop.key.name ? prop.key.value}\": #{walk prop.value},\n"
         rv += '})'
       when 'Literal'
         if c.value is null
