@@ -424,6 +424,8 @@ generate = (c) ->
   p = new LinePrinter
   isElse = false
 
+  SIDE_EFFECT_FREE = ['Literal', 'Identifier', 'AssignmentExpression']
+
   maybeParens = (expr) ->
     s = walk expr
     if expr.type not in ['BinaryExpression', 'UnaryExpression', 'LogicalExpression']
@@ -490,8 +492,14 @@ generate = (c) ->
       when 'ExpressionStatement'
         ex = walk c.expression
         if c.expression and \
-           c.expression.type not in ['Literal', 'Identifier', 'AssignmentExpression']
-          p.addLine "#{ex}"
+           c.expression.type not in SIDE_EFFECT_FREE
+          p.addLine ex
+      when 'SequenceExpression'
+        c.expressions.map((expr) ->
+            value = walk(expr)
+            if expr.type not in SIDE_EFFECT_FREE
+                p.addLine value
+        )[c.expressions.length-1]
       when 'CallExpression', 'NewExpression'
         "#{walk c.callee}(#{c.arguments.map(walk).join ', '})"
       when 'ThrowStatement'
