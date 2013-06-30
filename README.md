@@ -12,8 +12,6 @@ to make that a reality.
 I've successfully used it to port [Esprima][1] to Python -- the result is
 [PyEsprima][2].
 
-The generated code can be prettified a little using [PythonTidy][3].
-
 Setup & Usage
 -------------
 
@@ -48,4 +46,3 @@ Limitations
 
 [1]: https://github.com/ariya/esprima
 [2]: https://github.com/int3/pyesprima
-[3]: https://pypi.python.org/pypi/PythonTidy
