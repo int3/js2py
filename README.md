@@ -2,8 +2,8 @@ js2py
 =====
 
 A Javascript-to-Python transpiler. More of a translation assistant, really,
-because it still requires manual intervention to aid it along. But it's much
-better than porting things by hand.
+because you'll most likely need to make some changes by hand. But it's much
+better than doing everything manually.
 
 I thought it would be nice to be able to `import` some libraries directly into
 Python, rather than shelling out to NodeJS. This script is the result of trying
@@ -35,6 +35,16 @@ Transformations and Shims
   Python's lambdas are limited
 * Shims for RegExp and JS-style dictionaries
 * Some support for `typeof`
+
+Limitations
+-----------
+
+* No support for modifying non-global nonlocals (but easy enough to add with
+  the `nonlocal` keyword in Python 3)
+* `a[i]` in JS will return `undefined` if `i >= a.length`, but in Python it
+  raises an `IndexError`.
+* No support for `call` / `apply`.
+* There are probably more; find out for yourself and file bugs!
 
 [1]: https://github.com/ariya/esprima
 [2]: https://github.com/int3/pyesprima
