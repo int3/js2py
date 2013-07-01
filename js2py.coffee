@@ -22,8 +22,12 @@ class LinePrinter
 
 estraverse.Syntax.PySlice = 'PySlice'
 estraverse.Syntax.PyClass = 'PyClass'
-estraverse.VisitorKeys.PySlice = ['arguments']
-estraverse.VisitorKeys.PyClass = ['methods']
+estraverse.VisitorKeys.PySlice = ['callee', 'arguments']
+estraverse.VisitorKeys.PyClass = ['id', 'methods']
+
+
+tempNameCount = 0
+getTempName = -> "__temp__#{tempNameCount++}"
 
 extractSideEffects = (c) ->
   statements = []
@@ -33,6 +37,13 @@ extractSideEffects = (c) ->
         when 'AssignmentExpression'
           statements.push c
           return c.left
+        when 'CallExpression'
+          left = { type: 'Identifier', name: getTempName() }
+          statements.push {
+              type: 'AssignmentExpression',
+              operator: '=', left: left, right: c
+          }
+          return left
   return { expr, statements }
 
 transform = (c) ->
@@ -79,8 +90,6 @@ transform = (c) ->
 
   currentFunction = null
   visibleFunctions = null
-  tempNameCount = 0
-  getTempName = -> "__temp__#{tempNameCount++}"
   tryGetType = (c) ->
     if not c then return true
     if c.type is 'Literal'
@@ -419,7 +428,8 @@ transform = (c) ->
             }
         when 'ThrowStatement'
           if (lastCatch = catchClauses[catchClauses.length - 1]) and
-             JSON.stringify(lastCatch.param) == JSON.stringify(c.argument)
+             c.argument.type is 'Identifier' and
+             c.argument.name is lastCatch.param.name
             c.argument = null
           return
         when 'CatchClause'
@@ -439,7 +449,7 @@ generate = (c) ->
   p = new LinePrinter
   isElse = false
 
-  SIDE_EFFECT_FREE = ['Literal', 'Identifier', 'AssignmentExpression']
+  SIDE_EFFECT_FREE = ['Literal', 'Identifier', 'AssignmentExpression', 'UpdateExpression']
 
   maybeParens = (expr) ->
     s = walk expr
@@ -447,6 +457,13 @@ generate = (c) ->
       s
     else
       "(#{s})"
+
+  maybeTruthy = (expr) ->
+    s = walk expr
+    if expr.type in ['LogicalExpression', 'BinaryExpression', 'UnaryExpression', 'Literal']
+      s
+    else
+      "#{s} not in [None, False]"
 
   walk = (c) ->
     return if c is null
@@ -475,7 +492,7 @@ generate = (c) ->
         walk c.body
         p.addLine ''
       when 'IfStatement'
-        p.addLine "#{if c.isElse then 'el' else ''}if #{walk c.test}:"
+        p.addLine "#{if c.isElse then 'el' else ''}if #{maybeTruthy c.test}:"
         walk ensure_block c.consequent
         if c.alternate
           if c.alternate.type is 'IfStatement'
@@ -488,7 +505,7 @@ generate = (c) ->
       when 'WhileStatement'
         if c.prelude
           c.prelude.map(walk)
-        p.addLine "while #{walk c.test}:"
+        p.addLine "while #{maybeTruthy c.test}:"
         walk c.body
       when 'VariableDeclaration'
         for d in c.declarations
@@ -532,7 +549,7 @@ generate = (c) ->
       when 'PySlice'
         "#{walk c.callee}[#{maybeParens c.arguments[0]}:#{maybeParens c.arguments[1]}]"
       when 'ConditionalExpression'
-        "(#{walk c.consequent} if #{walk c.test} else #{walk c.alternate})"
+        "(#{walk c.consequent} if #{maybeTruthy c.test} else #{walk c.alternate})"
       when 'MemberExpression'
         if c.computed
           "#{walk c.object}[#{walk c.property}]"
