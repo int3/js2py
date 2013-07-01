@@ -37,7 +37,7 @@ extractSideEffects = (c) ->
 
 transform = (c) ->
   root = c
-  RESERVED_IDENTS = [ 'len', 'print', 'list', 'assert' ]
+  RESERVED_IDENTS = [ 'len', 'print', 'list', 'assert', 'str' ]
 
   classes = {}
 
@@ -249,6 +249,15 @@ transform = (c) ->
               type: 'CallExpression'
               callee: { type: 'Identifier', name: 'list_indexOf' }
               arguments: [c.callee.object, c.arguments[0]]
+            }), @)
+            when_({
+              callee: {
+                property: { type: 'Identifier', name: 'toString' }
+              }
+            }, (-> {
+              type: 'CallExpression'
+              callee: { type: 'Identifier', name: 'str', generated: true }
+              arguments: [c.callee.object]
             }), @)
             when_({
               callee: {
