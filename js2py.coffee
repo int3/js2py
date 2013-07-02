@@ -180,7 +180,7 @@ transform = (c) ->
           else if c.name is 'Error'
             c.name = 'RuntimeError'
           else if c.name is 'String'
-            c.name = 'str' # TODO make more precise
+            c.name = 'unicode' # TODO make more precise
           c
         when 'CallExpression'
           c = match c, ((when_) ->
@@ -265,7 +265,7 @@ transform = (c) ->
               }
             }, (-> {
               type: 'CallExpression'
-              callee: { type: 'Identifier', name: 'str', generated: true }
+              callee: { type: 'Identifier', name: 'unicode', generated: true }
               arguments: [c.callee.object]
             }), @)
             when_({
@@ -463,7 +463,7 @@ generate = (c) ->
     if expr.type in ['LogicalExpression', 'BinaryExpression', 'UnaryExpression', 'Literal']
       s
     else
-      "#{s} not in [None, False]"
+      "#{s} not in [None, False, '']"
 
   walk = (c) ->
     return if c is null
@@ -643,4 +643,4 @@ generate = (c) ->
 
 if require.main == module
   fs = require 'fs'
-  generate(esprima.parse (fs.readFileSync process.argv[2]))
+  generate(esprima.parse (fs.readFileSync process.argv[2]), loc:true)
